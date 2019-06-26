@@ -1,0 +1,50 @@
+
+Fatbin elf code:
+================
+arch = sm_30
+code version = [1,7]
+producer = <unknown>
+host = linux
+compile_size = 64bit
+
+Fatbin elf code:
+================
+arch = sm_30
+code version = [1,7]
+producer = <unknown>
+host = linux
+compile_size = 64bit
+
+Fatbin ptx code:
+================
+arch = sm_30
+code version = [6,4]
+producer = <unknown>
+host = linux
+compile_size = 64bit
+compressed
+
+
+
+
+
+
+
+
+.version 6.4
+.target sm_30
+.address_size 64
+
+
+
+.visible .entry _Z7mKernalPi(
+.param .u64 _Z7mKernalPi_param_0
+)
+{
+
+
+
+ret;
+}
+
+

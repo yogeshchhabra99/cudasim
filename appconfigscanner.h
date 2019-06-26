@@ -1,0 +1,9 @@
+#define GRID_DIM_x 1
+#define GRID_DIM_y 2
+#define GRID_DIM_z 3
+#define BLOCK_DIM_x 4
+#define BLOCK_DIM_y 5
+#define BLOCK_DIM_z 6
+#define INTEGER 7
+#define UNEXPECTED -1
+#define COLON 8

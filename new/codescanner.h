@@ -36,3 +36,17 @@
 #define GLOBAL 35
 #define DIRECTIVE 36
 #define COLON 37
+
+#define ADD 38
+#define SUB 39
+#define MUL 40
+#define DIV 41
+#define REM 42
+#define ABS 43
+#define SQRT 44
+
+#define PERCENT 45
+#define LESSTHAN 46
+#define GREATERTHAN 47
+#define THIRTYTWO 48
+#define SIXTYFOUR 49

@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <bits/stdc++.h>
 #include "codescanner.h"
 #include <stdlib.h>
 #include <string.h>
@@ -25,13 +25,78 @@ enum Type
 
 };
 
-typedef struct mystruct3
+long long registers_max = 65536;
+int warpholderspersm = 4;
+int threadspersm = 2048;
+int WLPeffect = (threadspersm / 32) / 4;
+long long registers = 0;
+
+class CodeBlock
 {
+public:
     int startLine;
     int endLine;
     Type type;
+    int cycles;
+    int NUMbytes;
+    int tWeight;
+    bool inLoop;
+    CodeBlock()
+    {
+        inLoop = false;
+        cycles = 0;
+    }
+};
 
-} CodeBlock;
+class Loop
+{
+public:
+    int startLine;
+    int endLine;
+    Loop *childLoop;
+    int cycles;
+    int iterations;
+    int startBlock;
+    int endBlock;
+    int memoryCycles;
+    int otherCycles;
+    int CYCcompute;
+    int NUMmem;
+    int NUMmemShared;
+    int compnew;
+    int NUMsync;
+    long long totalmemcycles;
+    long long totalmemSharedcycles;
+
+    Loop()
+    {
+        NUMsync = 0;
+        iterations = 0;
+        cycles = 0;
+        NUMmem = 0;
+        NUMmemShared = 0;
+        CYCcompute = 0;
+        compnew = 0;
+    }
+
+    bool operator>(Loop l)
+    {
+        return this->startLine > l.startLine;
+    }
+    bool operator<(Loop l)
+    {
+        return this->startLine < l.startLine;
+    }
+
+    bool operator>=(Loop l)
+    {
+        return this->startLine >= l.startLine;
+    }
+    bool operator<=(Loop l)
+    {
+        return this->startLine <= l.startLine;
+    }
+};
 
 typedef struct mystruct4
 {
@@ -42,7 +107,7 @@ typedef struct mystruct4
 
 vector<Instr> labels;
 vector<Instr> branches;
-vector<CodeBlock> loops;
+vector<Loop> loops;
 
 typedef struct mystruct2
 {
@@ -71,6 +136,7 @@ class Instruction
 public:
     int length;
     Type type;
+    int cycles;
 
     Instruction(int _length, Type _type)
     {
@@ -85,44 +151,136 @@ public:
 
 Instruction getType(int *nToken)
 {
-    // cout << "line " << lineNo << " token " << *nToken;
-    // #define PARAM 16
-    // #define LOCAL 17
-    // #define REG 18
-    // #define MOV 19
-    // #define CONVERT 20
-    // #define MEMOP 21
-    // #define LOAD 22
-    // #define COMP 23
-    // #define Store 24
-    // #define CONTROLFLOW 25
-    // #define BRANCH 26
-    // #define CALL 27
-    // #define RET 28
-    // #define EXIT 29
-    // #define BAR 30
-    // #define MEMBAR 31
-    // #define DOT 32
-    // #define STORE 33
-    // #define SHARED 34
-    // #define GLOBAL 35
-
+    //   cout << "lineno" << lineNo << endl;
     int token = *nToken;
 
     Instruction inst;
-    if (token == LOAD || token == STORE)
+
+    if (token == REG)
+    {
+
+        char *c = yytext;
+        while (*c != '<')
+            c++;
+        c++;
+        char a[10];
+        int i = 0;
+        while (*c != '>')
+        {
+            a[i] = *c;
+            i++;
+            c++;
+        }
+        a[i] = '\0';
+
+        c = yytext;
+        bool flag = false;
+        //    printf("%s\n", c);
+        while (*c < '0' || *c > '9')
+        {
+            c++;
+            if (*c == '<')
+            {
+                flag = true;
+                break;
+            }
+        }
+        char b[10];
+        if (flag)
+        {
+            b[0] = '3';
+            b[1] = '2';
+            b[2] = '\0';
+        }
+        else
+        {
+            i = 0;
+            while (*c >= '0' && *c <= '9')
+            {
+                b[i] = *c;
+                c++;
+                i++;
+            }
+            b[i] = '\0';
+        }
+
+        registers += atoi(b) / 32 * atoi(a);
+
+        int newToken = getToken();
+        cout << "reg size:" << atoi(b) << " number of reg=" << atoi(a) << endl;
+        while (newToken != NEWLINE)
+            newToken = getToken();
+        inst.type = S;
+        inst.cycles = 50;
+    }
+    else if (token == ADD)
+    {
+        int newToken = getToken();
+        while (newToken != NEWLINE)
+            newToken = getToken();
+        inst.type = C;
+        inst.cycles = 15;
+    }
+    else if (token == MUL)
+    {
+        int newToken = getToken();
+        while (newToken != NEWLINE)
+            newToken = getToken();
+        inst.type = C;
+        inst.cycles = 85;
+    }
+    else if (token == DIV)
+    {
+        int newToken = getToken();
+        while (newToken != NEWLINE)
+            newToken = getToken();
+        inst.type = C;
+        inst.cycles = 1039;
+    }
+    else if (token == REM)
+    {
+        int newToken = getToken();
+        while (newToken != NEWLINE)
+            newToken = getToken();
+        inst.type = C;
+        inst.cycles = 1017;
+    }
+    else if (token == ABS)
+    {
+        int newToken = getToken();
+        while (newToken != NEWLINE)
+            newToken = getToken();
+        inst.type = C;
+        inst.cycles = 30;
+    }
+    else if (token == SQRT)
+    {
+        int newToken = getToken();
+        while (newToken != NEWLINE)
+            newToken = getToken();
+        inst.type = C;
+        inst.cycles = 399;
+    }
+    else if (token == LOAD || token == STORE)
     {
         if (getToken() != DOT)
-            printf("unexpected at line: %d\n", lineNo); //ignoring dot
+            printf("unexpected1 at line: %d\n", lineNo); //ignoring dot
         int newToken = getToken();
 
         //shared mem or local memory(stack) used for parameter and return values also called thread memory
         if (newToken == PARAM || newToken == SHARED || newToken == LOCAL)
+        {
             inst.type = S;
+            inst.cycles = 500;
+            //          cout << "shared mem access at" << lineNo << endl;
+        }
         else if (newToken == GLOBAL)
+        {
             inst.type = M;
+            inst.cycles = 1493; //assuming decreased by cache
+        }
         else
-            printf("unexpected at line: %d\n", lineNo);
+            printf("unexpected2 at line: %d\n", lineNo);
         while (newToken != NEWLINE)
             newToken = getToken();
     }
@@ -132,16 +290,18 @@ Instruction getType(int *nToken)
         while (newToken != NEWLINE)
             newToken = getToken();
         inst.type = C;
+        inst.cycles = 15;
     }
     else if (token == NEWLINE)
     {
         inst.type = E;
+        inst.cycles = 0;
     }
     else if (token == CURLYBEGIN || token == CURLYEND)
     {
         if (getToken() != NEWLINE)
         {
-            cout << "unexpected" << endl;
+            cout << "unexpected3 at lineNo" << lineNo << endl;
             inst.type = U;
         }
         else
@@ -155,6 +315,7 @@ Instruction getType(int *nToken)
         while (newToken != NEWLINE)
             newToken = getToken();
         inst.type = S;
+        inst.cycles = 15; // not sure
     }
     else if (token == CALL)
     {
@@ -168,7 +329,7 @@ Instruction getType(int *nToken)
         }
         if (getToken() != NEWLINE)
         {
-            cout << "unexpected" << endl;
+            cout << "unexpected4 at " << lineNo << endl;
             inst.type = U;
         }
         else
@@ -176,6 +337,7 @@ Instruction getType(int *nToken)
             inst.length = lines;
             //cout << "length" << inst.length << endl;
             inst.type = CF;
+            inst.cycles = 15;
         }
     }
     else if (token == CONTROLFLOW)
@@ -185,18 +347,25 @@ Instruction getType(int *nToken)
         int newToken = getToken();
         while (newToken != BRANCH)
             newToken = getToken();
-        if (getToken() != DIRECTIVE)
+        int t = getToken();
+        if (t != DIRECTIVE)
         {
-            cout << "unexpected" << endl;
+            cout << "unexpected5 " << t << " at " << lineNo << endl;
+            printf("%s\n", yytext);
         }
-        temp.cp = yytext;
-        if (getToken() != SEMICOLON)
+        temp.cp = yytext - 1; //donno why yytext is going 1 char ahead
+        t = getToken();
+        if (t != SEMICOLON)
         {
-            cout << "unexpected" << endl;
+            cout << "unexpected6 " << t << " at " << lineNo << endl;
         }
         branches.push_back(temp);
-
+        if (getToken() != NEWLINE)
+        {
+            cout << "unexpected10" << endl;
+        }
         inst.type = CF;
+        inst.cycles = 15; //not sure
     }
     else if (token == BRACKETBEGIN)
     { //call
@@ -214,7 +383,7 @@ Instruction getType(int *nToken)
         int newToken = getToken();
         if (newToken != COLON || getToken() != NEWLINE)
         {
-            cout << "unexpected";
+            cout << "unexpected7";
             inst.type = U;
         }
         else
@@ -227,29 +396,167 @@ Instruction getType(int *nToken)
         int newToken = getToken();
         if (newToken != SEMICOLON || getToken() != NEWLINE)
         {
-            cout << "unexpected";
+            cout << "unexpected8";
             inst.type = U;
         }
         else
         {
             inst.type = CF;
+            inst.cycles = 15;
         }
+    }
+    else if (token == BAR)
+    {
+        int newToken = getToken();
+        while (newToken != NEWLINE)
+            newToken = getToken();
+        inst.type = B;
+        inst.cycles = 15; // not sure
     }
     else
     {
+        cout << "unexpexted 12 at" << lineNo << " token " << token << endl;
         while (token != NEWLINE)
         {
             //  cout << "test" << endl;
             token = getToken();
         }
+        inst.cycles = 15;
         inst.type = U;
     }
     //  cout << " type " << type << endl;
     return inst;
 }
 
+class ResultCycles
+{
+public:
+    long long totalCompcycles;
+    long long totalmemcycles;
+    long long totalmemSharedcycles;
+
+    ResultCycles()
+    {
+        totalCompcycles = 0;
+        totalmemcycles = 0;
+        totalmemSharedcycles = 0;
+    }
+    ResultCycles(long long compC, long long memC, long long smemC)
+    {
+        totalCompcycles = compC;
+        totalmemcycles = memC;
+        totalmemSharedcycles = smemC;
+    }
+};
+
+ResultCycles getCycles(vector<Loop> fLoops, vector<CodeBlock> blocks, int *loopRunning, int *looptype)
+{
+    float bytesperCycle = 1.8775;
+    long long numberOfthreads = 1024 * 1024;
+    long long numberOfWarps = numberOfthreads / 32;
+    int wlpNew = numberOfWarps / 20;
+    cout << "wlp new " << wlpNew << endl;
+    long long newTotalmemcycles = 0;
+    long long newTotalmemSharedcycles = 0;
+    long long newTotalCompcycles = 0;
+
+    long long totalCompCycles = 0;
+    for (int k = 0; k < fLoops.size(); k++)
+    {
+        long long int NUMmemTotal = 0;
+        long long int NUMmemSharedTotal = 0;
+        //    cout << "Loop starting at " << blocks[fLoops[k].startBlock].startLine << endl;
+        //    cout << "Loop ending at " << blocks[fLoops[k].endBlock].endLine << endl;
+        //    cout << endl;
+        //    cout << "Original Loop starting at " << fLoops[k].startLine << endl;
+        //    cout << "Original Loop ending at " << fLoops[k].endLine << endl;
+
+        for (int l = fLoops[k].startBlock; l <= fLoops[k].endBlock; l++)
+        {
+
+            //   cout << "type:" << blocks[l].type << " start line " << blocks[l].startLine << " end line " << blocks[l].endLine << endl;
+            if (blocks[l].type == M)
+            {
+                //                   memCycles += blocks[l].cycles;
+
+                blocks[l].tWeight = (blocks[l].endLine - blocks[l].startLine) + 1;
+                fLoops[k].CYCcompute += blocks[l].tWeight;
+                fLoops[k].NUMmem += blocks[l].tWeight;
+                blocks[l].NUMbytes = blocks[l].tWeight * 4;
+            }
+            else if (blocks[l].type == S)
+            {
+                //                memCycles += blocks[l].cycles;
+                blocks[l].tWeight = (blocks[l].endLine - blocks[l].startLine) + 1;
+                fLoops[k].CYCcompute += blocks[l].tWeight;
+                fLoops[k].NUMmemShared += blocks[l].tWeight;
+                blocks[l].NUMbytes = blocks[l].tWeight * 4;
+            }
+            else if (blocks[l].type == B)
+            {
+                fLoops[k].NUMsync++;
+            }
+            else
+            {
+                blocks[l].tWeight = (blocks[l].endLine - blocks[l].startLine) + 1;
+                //                otherCycles += blocks[l].cycles;
+                fLoops[k].CYCcompute += blocks[l].tWeight * 1;
+                blocks[l].NUMbytes = 0;
+                fLoops[k].compnew += blocks[l].tWeight * 1;
+            }
+        }
+
+        // NUMmemTotal += fLoops[k].NUMmem;
+        // NUMmemSharedTotal += fLoops[k].NUMmemShared;
+        // compnew += fLoops[k].compnew;
+
+        //fLoops[k].memoryCycles = memCycles;
+        //fLoops[k].otherCycles = otherCycles;
+
+        int CYCMemory = ((fLoops[k].NUMmem + fLoops[k].NUMmemShared) * 4 * 32) / bytesperCycle; //for a wrap
+                                                                                                //    cout << "debug numem=" << fLoops[k].NUMmem << endl;
+
+        int LaencyBW = 0;
+        if ((fLoops[k].NUMmemShared + fLoops[k].NUMmem) > 0)
+            LaencyBW = max(0, (CYCMemory - fLoops[k].CYCcompute) / (fLoops[k].NUMmemShared + fLoops[k].NUMmem)) + 1;
+        //    cout << "debug2\n";
+        int loadLatency = 250;
+        int sharedLoadLatency = 50;
+        float NBCavg = (float)fLoops[k].CYCcompute / (fLoops[k].NUMmem + fLoops[k].NUMmemShared + fLoops[k].NUMsync + 1);
+        int LatencyExposed = loadLatency - (WLPeffect - 1) * NBCavg;
+        int LatencyExposedShared = sharedLoadLatency - (WLPeffect - 1) * NBCavg;
+        cout << "nbc avg " << NBCavg << " cyc compute " << fLoops[k].CYCcompute << " num mem " << fLoops[k].NUMmem << " latency exxposed " << LatencyExposed << endl;
+
+        if (looptype[k] == 1)
+        {
+            NUMmemTotal = ((fLoops[k].NUMmem) * (double)(loopRunning[k] / 4) * (numberOfthreads / (20 * 32)));
+            NUMmemSharedTotal = ((fLoops[k].NUMmemShared) * (double)(loopRunning[k] / 4) * (numberOfthreads / (20 * 32)));
+            newTotalCompcycles += ((fLoops[k].compnew) * (double)(loopRunning[k] / 4) * (numberOfthreads / (20 * 32)));
+        }
+        else
+        {
+            NUMmemTotal = ((fLoops[k].NUMmem) * (double)(loopRunning[k]) * (numberOfthreads / (20 * 32)));
+            NUMmemSharedTotal = ((fLoops[k].NUMmemShared) * (double)(loopRunning[k]) * (numberOfthreads / (20 * 32)));
+            newTotalCompcycles += ((fLoops[k].compnew) * (double)(loopRunning[k]) * (numberOfthreads / (20 * 32)));
+        }
+        //long long int newmemorycycles = fLoops[k].NUMmem * LatencyExposed * (numberofwraps / 20) * 256; //* (1024 / 4);
+        //memnew = newmemorycycles;
+
+        fLoops[k].totalmemcycles = (NUMmemTotal / 32) * LatencyExposed + NUMmemTotal;
+        fLoops[k].totalmemSharedcycles = (NUMmemSharedTotal / 32) * LatencyExposedShared + NUMmemSharedTotal;
+
+        newTotalmemcycles += fLoops[k].totalmemcycles;
+        newTotalmemSharedcycles += fLoops[k].totalmemSharedcycles;
+    }
+
+    return ResultCycles(newTotalmemcycles,
+                        newTotalmemSharedcycles,
+                        newTotalCompcycles);
+}
+
 int main(void)
 {
+    cout << "wlp effect" << WLPeffect << endl;
     printf("M=%d, S=%d, U=%d, C=%d, B=%d, D=%d E=%d CF=%d\n", M, S, U, C, B, D, E, CF);
     vector<CodeBlock> blocks;
     vector<Instruction> types;
@@ -278,16 +585,16 @@ int main(void)
         if (curly == 0)
             break;
         Instruction inst = getType(&nToken);
-        //    printf("%d\n", type);
+        //   printf("%d %d\n", lineNo - 1, inst.type);
         types.push_back(inst);
     }
     printf("------------------------\n");
     for (int i = 0; i < types.size(); i++)
     {
-        //    printf("%d : %d\n", line1 + i, types[i]);
+        //    printf("%d : %d\n", line1 + i, types[i].type);
         if (types[i].type == U)
         {
-            cout << "unexpected" << endl;
+            cout << "unexpected11 at " << line1 + i << endl;
         }
     }
 
@@ -297,12 +604,14 @@ int main(void)
     block.startLine = line1;
     block.endLine = line1;
     block.type = types[0].type;
+    block.cycles = types[0].cycles;
     int surplus = 0;
     for (int i = 1; i < types.size(); i++)
     {
         if (types[i].type == block.type)
         {
             block.endLine += 1;
+            block.cycles += types[i].cycles;
         }
         else
         {
@@ -310,6 +619,7 @@ int main(void)
             block.startLine = surplus + line1 + i;
             block.endLine = surplus + line1 + i + types[i].length - 1;
             block.type = types[i].type;
+            block.cycles = types[i].cycles;
             if (types[i].length != 1)
             {
                 surplus += (types[i].length - 1);
@@ -322,11 +632,11 @@ int main(void)
         //printf("%d %d %d\n", blocks[i].startLine, blocks[i].endLine, blocks[i].type);
         //  if (blocks[i].type == CF)
         //  {
-        printf("%d %d %d\n", blocks[i].startLine, blocks[i].endLine, blocks[i].type);
+        //       printf("%d %d %d\n", blocks[i].startLine, blocks[i].endLine, blocks[i].type);
         //  }
     }
 
-    cout << " branches" << endl;
+    //   cout << " branches" << endl;
     for (int i = 0; i < branches.size(); i++)
     {
         char *ptr = branches[i].cp;
@@ -340,9 +650,9 @@ int main(void)
         }
         label[j] = '\0';
         branches[i].label = string(label);
-        cout << branches[i].lineNo << branches[i].label << endl;
+        //       cout << branches[i].lineNo << branches[i].label << endl;
     }
-    cout << " Labels" << endl;
+    //    cout << " Labels" << endl;
     for (int i = 0; i < labels.size(); i++)
     {
         char *ptr = labels[i].cp;
@@ -355,7 +665,7 @@ int main(void)
         }
         label[j] = '\0';
         labels[i].label = string(label);
-        cout << labels[i].lineNo << labels[i].label << endl;
+        //      cout << labels[i].lineNo << labels[i].label << endl;
     }
     for (int i = 0; i < branches.size(); i++)
     {
@@ -363,15 +673,144 @@ int main(void)
         {
             if (branches[i].label == labels[j].label)
             {
-                if (branches[i].lineNo > labels[i].lineNo)
+                if (branches[i].lineNo > labels[j].lineNo)
                 {
                     cout << "backward call at " << branches[i].lineNo << " to " << labels[j].lineNo << endl;
-                    CodeBlock loop;
-                    loop.startLine = labels[i].lineNo + 1;
+                    Loop loop;
+                    loop.startLine = labels[j].lineNo + 1;
                     loop.endLine = branches[i].lineNo - 1;
-                    loops.add()
+                    loops.push_back(loop);
                 }
             }
         }
     }
+
+    sort(loops.begin(), loops.end());
+
+    vector<Loop> fLoops;
+    vector<Loop> nonLoops;
+    for (int k = 0; k < loops.size() - 1; k++)
+    {
+        if (loops[k].endLine > loops[k + 1].startLine)
+        {
+            Loop l = loops[k];
+            Loop c = loops[k + 1];
+            l.childLoop = &c;
+            fLoops.push_back(l);
+            k++;
+        }
+        else
+        {
+            Loop l = loops[k];
+            fLoops.push_back(l);
+        }
+    }
+
+    fLoops.push_back(loops[loops.size() - 1]);
+    //cout << "debug start" << loops[0].startLine << endl;
+    for (int k = 0; k < fLoops.size(); k++)
+    {
+        int l = 0;
+        while (l < blocks.size() && blocks[l].startLine < fLoops[k].startLine)
+        {
+            l++;
+        }
+        fLoops[k].startBlock = l;
+        blocks[l].inLoop = true;
+        //        cout << "start block:" << fLoops[k].startBlock << endl;
+        while (l < blocks.size() && blocks[l].endLine < fLoops[k].endLine)
+        {
+            l++;
+            blocks[l].inLoop = true;
+        }
+        fLoops[k].endBlock = l;
+    }
+    //    cout << "debug" << endl;
+    int t = 0;
+    while (t != blocks.size())
+    {
+        while (blocks[t].inLoop == true)
+        {
+            t++;
+            if (t >= blocks.size())
+                break;
+        }
+        if (t >= blocks.size())
+            break;
+        Loop nonLoop;
+        nonLoop.startBlock = t;
+        while (blocks[t].inLoop == false)
+        {
+            t++;
+            if (t >= blocks.size())
+                break;
+        }
+        nonLoop.endBlock = t - 1;
+        nonLoops.push_back(nonLoop);
+    }
+    cout << "Loops\n";
+    for (int i = 0; i < fLoops.size(); i++)
+    {
+        cout << i + 1 << " start block=" << fLoops[i].startBlock << "  end block=" << fLoops[i].endBlock << endl;
+    }
+    cout << "Non Loops\n";
+    for (int i = 0; i < nonLoops.size(); i++)
+    {
+        cout << i + 1 << " start block=" << nonLoops[i].startBlock << "  end block=" << nonLoops[i].endBlock << endl;
+    }
+
+    // cout << "debug1" << endl;
+    long long int memnew = 0;
+    long long compnew = 0;
+    int memCycles = 0;
+    int otherCycles = 0;
+    int CYCcompute = 0;
+    //for a wrap
+    long long loadLatency = 250;
+    int WLPeffect = 20;
+    long long LatencyExposed;
+    long long LatencyExposedShared;
+    int NUMsync = 0;
+    float NBCavg;
+
+    int looptype[2] = {2, 1}; // 1 is unwrapped  2 is not
+    //int looptype[1] = {1};
+    //int loopRunning[1] = {1024};
+    int loopRunning[2] = {19, 31};
+    long long newTotalmemcycles = 0;
+    long long newTotalmemSharedcycles = 0;
+    long long newTotalCompcycles = 0;
+    //640 see this
+    long long totalMemoryCycles = 0;
+    long long totalOtherCycles = 0;
+
+    int temp[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    int temp2[] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
+    ResultCycles res = getCycles(fLoops, blocks, loopRunning, looptype);
+    newTotalCompcycles += res.totalCompcycles;
+    newTotalmemcycles = res.totalmemcycles;
+    newTotalmemSharedcycles += res.totalmemSharedcycles;
+    //   res = getCycles(nonLoops, blocks, temp, temp2);
+    //   newTotalCompcycles += res.totalCompcycles;
+    //   newTotalmemcycles = res.totalmemcycles;
+    //   newTotalmemSharedcycles += res.totalmemSharedcycles;
+
+    //totalMemoryCycles /= 224256; //ddr factor 2 or 4 if 4 then 22456 else divide by 2
+    // cout << "Memory Cycles" << totalMemoryCycles << endl;
+    // cout << "Other  cycles" << totalOtherCycles << endl;
+    // cout << " Mem Time " << (double)totalMemoryCycles / 1493000000 << endl;
+
+    //   cout << "Memory  Paper" << memnew << " time " << (double)memnew / 3504000000 << endl;
+    // cout << "comp new" << compnew << endl;
+    // cout << "total cycles new per wrap" << compnew + memnew << endl;
+    // cout << "time " << ((compnew + LatencyExposed * NUMmem) * (double)(1024 / 4) * ((1024 * 1024) / (20 * 32))) / 1493000000 << endl;
+    // long long hytotal = totalMemoryCycles + ((compnew) * (double)(1024 / 4) * ((1024 * 1024) / (20 * 32)));
+    // cout << "unsing mem old and comp new; time = " << (double)hytotal / 1493000000 << endl;
+
+    cout << "considering cache too" << endl;
+    //long long newTotalmemop = ((NUMmem) * (double)(1024 / 4) * ((1024 * 1024) / (20 * 32)));
+    //long long newTotalmemopShared = ((NUMmemShared) * (double)(1024 / 4) * ((1024 * 1024) / (20 * 32)));
+
+    cout << "total cycles" << newTotalCompcycles + newTotalmemcycles + newTotalmemSharedcycles << endl;
+    cout << "time:" << (double)(newTotalCompcycles + newTotalmemcycles + newTotalmemSharedcycles) / 1493000000 << endl;
 }

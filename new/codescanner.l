@@ -11,10 +11,16 @@
 "]" return SQUAREEND;
 "(" return BRACKETBEGIN;
 ")" return BRACKETEND;
+" " ;
+"%" return PERCENT;
+"<" return LESSTHAN;
+">" return GREATERTHAN;
+"32" return THIRTYTWO;
+"64" return SIXTYFOUR; 
 "entry" return ENTRY;
 "param" return PARAM;
 "local" return LOCAL;
-"reg" return REG;
+".reg" return REG;
 "mov" return MOV;   //slightly like addi
 "ld" return LOAD;
 "st" return STORE;
@@ -23,25 +29,25 @@
 "shared" return SHARED;
 "global" return GLOBAL;
 
-"add" return COMP;
-"sub" return COMP;
-"addc" return COMP;
-"subc" return COMP;
-"mul" return COMP;
-"mul24" return COMP;
-"mad24" return COMP;
-"mad" return COMP;
-"sad" return COMP;
-"div" return COMP;
-"rem" return COMP;
-"abs" return COMP;
+"add" return ADD;
+"sub" return ADD;
+"addc" return ADD;
+"subc" return ADD;
+"mul" return MUL;
+"mul24" return MUL;
+"mad24" return MUL;
+"mad" return MUL;
+"sad" return ADD;
+"div" return DIV;
+"rem" return REM;
+"abs" return ABS;
 "neg" return COMP;
-"min" return COMP;
-"max" return COMP;
+"min" return ADD;
+"max" return ADD;
 
 "fma" return COMP; //float
 "rcp" return COMP; //float
-"sqrt" return COMP; //float
+"sqrt" return SQRT; //float
 "sin" return COMP; //float
 "cos" return COMP; //float
 "lg2" return COMP; //float

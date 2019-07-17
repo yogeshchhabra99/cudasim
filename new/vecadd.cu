@@ -45,19 +45,19 @@ void vecAdd(float* A,float* B,float* C, int n){
 
 int main(){
 	float *A,*B,*C;
-	int n=10;
+	int n=1024*1024;
 	A=(float*)malloc(n*sizeof(float));
 	B=(float*)malloc(n*sizeof(float));
 	C=(float*)malloc(n*sizeof(float));
 	int i;
 	for(i=0;i<n;i++){
-		A[i]=(float)i;
-		B[i]=(float)2*i;	
+		A[i]=(float)(i%100000);
+		B[i]=(float)((2*i)%100000);	
 	}
 	vecAdd(A,B,C,n);
-	for(i=0;i<n;i++){
-		printf("%f ",C[i]);	
-	}
+//	for(i=0;i<n;i++){
+//		printf("%f ",C[i]);	
+//	}
 	free(A);
 	free(B);
 	free(C);

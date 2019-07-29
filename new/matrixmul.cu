@@ -41,16 +41,17 @@ void vecMulMatrix(float* A,float* B,float* C, int n){
 	//call kernal function that the calculates the product and stores it in C
 	dim3 dimBlock(16,16,1);
 	dim3 dimGrid(ceil(n/16.0),ceil(n/16.0),1);
-	
-	time_t t1=time(NULL);
-//	for(int i=0;i<33;i++)		//315 when n=640   33 when n=1024
+	clock_t start,end;
+	start=clock();
+	printf("grid size: %d %d %d\n ",dimGrid.x,dimGrid.y, dimGrid.z);
 	vecMulMatrixKernel<<<dimGrid,dimBlock >>>(d_A,d_B,d_C,n);		
 	cudaDeviceSynchronize();
-	time_t t2=time(NULL);
-	printf("%d\n",t2-t1);
+	end=clock();
+	printf("time:%lf\n",(double)(end-start)/CLOCKS_PER_SEC);
+	printf("debug\n");
 	//copy C from devce memory
 	cudaMemcpy(C, d_C, size, cudaMemcpyDeviceToHost);
-	
+	printf("debug2\n");
 	//free device memories
 	cudaFree(d_A);
 	cudaFree(d_B);
@@ -61,7 +62,7 @@ void vecMulMatrix(float* A,float* B,float* C, int n){
 
 
 int main(){
-	int n=1024;//640;
+	int n=2048;//640;
 	int i,j;
 //	float A[n][n],C[n][n],B[n][n];
 //	for(i=0;i<n;i++){
@@ -80,6 +81,7 @@ int main(){
 		C[i]=(float*)malloc(1024*sizeof(float));
 	}
 	vecMulMatrix(&A[0][0],&B[0][0],&C[0][0],n);
+	
 //	vecMulMatrix(A,B,C,n);
 //	for(i=0;i<n;i++){
 //		for(j=0;j<n;j++){

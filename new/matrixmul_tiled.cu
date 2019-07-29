@@ -6,6 +6,7 @@
 #include<time.h>
 #define TILEWIDTH 32
 #define TILE_WIDTH 32
+
 __global__
 void vecMulMatrixKernel(float* A, float* B, float* C, int n){
 	//each block loads the corresponding row of blocks of A matrix and column of blocks of B matrix, one block at a time and then clculates the product for that part then product of a  the parts is added.
@@ -132,7 +133,7 @@ void vecMulMatrix(float* A,float* B,float* C, int n){
 int main(){
 	int maxThreads=640;
 	
-		int n=1024;//640;
+		int n=1024*2;//640;
 	int i,j;
 //	float A[n][n],C[n][n],B[n][n];
 //	for(i=0;i<n;i++){

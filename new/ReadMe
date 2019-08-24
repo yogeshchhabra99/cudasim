@@ -1,0 +1,10 @@
+TO get the output:
+1.)Place your kernal(only) in code.cu file
+2.)Place the launch configuration in launchconf.txt
+3.)Answer the queries
+
+//currently not working correct if there are nested loops in the ptx, which usually is not the case
+
+TOdo:
+1.)Calculate WLP based on the memory usages.
+

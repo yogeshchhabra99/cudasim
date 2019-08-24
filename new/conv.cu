@@ -20,7 +20,7 @@ void vecConvKernel(float* A, float* B, float* C,int*D, int n,int m){
 			start=i-m;
 		if(i<end)
 			end=i;
-//		printf("start:%d   end:%d\n",start,end);
+		printf("start:%d   end:%d\n",start,end);
 		for(j=start;j<=end;j++){
 			val+=A[j]*B[i-j];
 		}
@@ -82,7 +82,7 @@ void vecConv(float* A,float* B,float* C,int* D, int n, int m){
 int main(){
 	float *A,*B,*C;
 	int*D;
-	int n=1024*1024/2;
+	int n=1024*1024;
 	A=(float*)malloc(n*sizeof(float));
 	B=(float*)malloc(n*sizeof(float));
 	C=(float*)malloc((n+n-1)*sizeof(float));

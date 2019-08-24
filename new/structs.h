@@ -1,9 +1,20 @@
+#pragma once
+
+#include<iostream>
+
+using namespace std;
 
 typedef struct mystruct1{
-    int gridDimX;
-    int gridDimY;
-    int gridDimZ;
-    int blockDimX;
-    int blockDimY;
-    int blockDimZ;
+    	long long numthreads;
+	float bytesPerCycle;
+	int loadLatency;
+	int sharedLoadLatency;
 } CudaConfig;
+
+void printConfig(CudaConfig config){
+	    	cout<<"numthreads:"<< config.numthreads<<endl;
+	cout<< "bytesPerCycle:"<<config.bytesPerCycle<<endl;
+	cout<< "loadLatency:"<<config.loadLatency<<endl;
+	cout<< "sharedLoadLatency:"<<config.sharedLoadLatency<<endl;
+
+}

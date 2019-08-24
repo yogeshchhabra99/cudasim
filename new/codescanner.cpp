@@ -11,6 +11,7 @@ using namespace std;
 extern int yylex();
 extern int yylineno;
 extern char *yytext;
+extern FILE *yyin, *yyout;
 
 enum Type
 {
@@ -67,6 +68,7 @@ public:
     int NUMsync;
     long long totalmemcycles;
     long long totalmemSharedcycles;
+	int type;
 
     Loop()
     {
@@ -207,7 +209,8 @@ Instruction getType(int *nToken)
         registers += atoi(b) / 32 * atoi(a);
 
         int newToken = getToken();
-        cout << "reg size:" << atoi(b) << " number of reg=" << atoi(a) << endl;
+
+//        cout << "reg size:" << atoi(b) << " number of reg=" << atoi(a) << endl;
         while (newToken != NEWLINE)
             newToken = getToken();
         inst.type = S;
@@ -449,12 +452,9 @@ public:
     }
 };
 
-ResultCycles getCycles(vector<Loop> fLoops, vector<CodeBlock> blocks, int *loopRunning, int *looptype, long long numberOfthreads)
+ResultCycles getCycles(vector<Loop> fLoops, vector<CodeBlock> blocks, vector<int>loopRunning, long long numberOfthreads, bool debug=false,float bytesperCycle= 1.8775,int loadLatency = 300,int sharedLoadLatency = 50)
 {
-    float bytesperCycle = 1.8775;
     long long numberOfWarps = numberOfthreads / 32;
-    int wlpNew = numberOfWarps / 20;
-    cout << "wlp new " << wlpNew << endl;
     long long newTotalmemcycles = 0;
     long long newTotalmemSharedcycles = 0;
     long long newTotalCompcycles = 0;
@@ -464,20 +464,10 @@ ResultCycles getCycles(vector<Loop> fLoops, vector<CodeBlock> blocks, int *loopR
     {
         long long int NUMmemTotal = 0;
         long long int NUMmemSharedTotal = 0;
-        //    cout << "Loop starting at " << blocks[fLoops[k].startBlock].startLine << endl;
-        //    cout << "Loop ending at " << blocks[fLoops[k].endBlock].endLine << endl;
-        //    cout << endl;
-        //    cout << "Original Loop starting at " << fLoops[k].startLine << endl;
-        //    cout << "Original Loop ending at " << fLoops[k].endLine << endl;
-
         for (int l = fLoops[k].startBlock; l <= fLoops[k].endBlock; l++)
         {
-
-            //   cout << "type:" << blocks[l].type << " start line " << blocks[l].startLine << " end line " << blocks[l].endLine << endl;
             if (blocks[l].type == M)
             {
-                //                   memCycles += blocks[l].cycles;
-
                 blocks[l].tWeight = (blocks[l].endLine - blocks[l].startLine) + 1;
                 fLoops[k].CYCcompute += blocks[l].tWeight;
                 fLoops[k].NUMmem += blocks[l].tWeight;
@@ -485,7 +475,6 @@ ResultCycles getCycles(vector<Loop> fLoops, vector<CodeBlock> blocks, int *loopR
             }
             else if (blocks[l].type == S)
             {
-                //                memCycles += blocks[l].cycles;
                 blocks[l].tWeight = (blocks[l].endLine - blocks[l].startLine) + 1;
                 fLoops[k].CYCcompute += blocks[l].tWeight;
                 fLoops[k].NUMmemShared += blocks[l].tWeight;
@@ -498,57 +487,50 @@ ResultCycles getCycles(vector<Loop> fLoops, vector<CodeBlock> blocks, int *loopR
             else
             {
                 blocks[l].tWeight = (blocks[l].endLine - blocks[l].startLine) + 1;
-                //                otherCycles += blocks[l].cycles;
                 fLoops[k].CYCcompute += blocks[l].tWeight * 1;
                 blocks[l].NUMbytes = 0;
                 fLoops[k].compnew += blocks[l].tWeight * 1;
             }
         }
-
-        // NUMmemTotal += fLoops[k].NUMmem;
-        // NUMmemSharedTotal += fLoops[k].NUMmemShared;
-        // compnew += fLoops[k].compnew;
-
-        //fLoops[k].memoryCycles = memCycles;
-        //fLoops[k].otherCycles = otherCycles;
-
         int CYCMemory = ((fLoops[k].NUMmem + fLoops[k].NUMmemShared) * 4 * 32) / bytesperCycle; //for a wrap
-                                                                                                //    cout << "debug numem=" << fLoops[k].NUMmem << endl;
 
         int LaencyBW = 0;
         if ((fLoops[k].NUMmemShared + fLoops[k].NUMmem) > 0)
             LaencyBW = max(0, (CYCMemory - fLoops[k].CYCcompute) / (fLoops[k].NUMmemShared + fLoops[k].NUMmem)) + 1;
-        //    cout << "debug2\n";
-        int loadLatency = 300; //250;
-        int sharedLoadLatency = 50;
         float NBCavg = (float)fLoops[k].CYCcompute / (fLoops[k].NUMmem + fLoops[k].NUMmemShared + fLoops[k].NUMsync + 1);
         int LatencyExposed = loadLatency - (WLPeffect - 1) * NBCavg;
         int LatencyExposedShared = sharedLoadLatency; //- (WLPeffect - 1) * NBCavg;
+	if(debug)
         cout << "nbc avg " << NBCavg << " cyc compute " << fLoops[k].CYCcompute << " num mem " << fLoops[k].NUMmem << " latency exxposed " << LatencyExposed << " latency exxposed shared " << LatencyExposedShared << endl;
 
-        if (looptype[k] == 1)
+        if ( fLoops[k].type == 1 )
         {
+		if(debug){
             cout << "numMem:" << fLoops[k].NUMmem * loopRunning[k] / 4 << endl;
             cout << "numMemShared:" << fLoops[k].NUMmemShared * loopRunning[k] / 4 << endl;
             cout << " numcomp:" << ((fLoops[k].compnew) * (double)(loopRunning[k] / 4)) << endl;
+		}
             NUMmemTotal = ((fLoops[k].NUMmem) * (double)(loopRunning[k] / 4) * (numberOfthreads / (20 * 32)));
             NUMmemSharedTotal = ((fLoops[k].NUMmemShared) * (double)(loopRunning[k] / 4) * (numberOfthreads / (20 * 32)));
             newTotalCompcycles += ((fLoops[k].compnew) * (double)(loopRunning[k] / 4) * (numberOfthreads / (20 * 32)));
+		
         }
         else
         {
+		if(debug){
             cout << "numMem:" << fLoops[k].NUMmem * loopRunning[k] << endl;
             cout << "numMemShared:" << fLoops[k].NUMmemShared * loopRunning[k] << endl;
             cout << " numcomp:" << ((fLoops[k].compnew) * (double)(loopRunning[k])) << endl;
-
+		}
             NUMmemTotal = ((fLoops[k].NUMmem) * (double)(loopRunning[k]) * (numberOfthreads / (20 * 32)));
             NUMmemSharedTotal = ((fLoops[k].NUMmemShared) * (double)(loopRunning[k]) * (numberOfthreads / (20 * 32)));
             newTotalCompcycles += ((fLoops[k].compnew) * (double)(loopRunning[k]) * (numberOfthreads / (20 * 32)));
         }
         //long long int newmemorycycles = fLoops[k].NUMmem * LatencyExposed * (numberofwraps / 20) * 256; //* (1024 / 4);
         //memnew = newmemorycycles;
-        cout << "numMemTotal:" << NUMmemTotal << endl;
-        cout << "numMemSharedTotal:" << NUMmemSharedTotal << endl;
+	
+//        cout << "numMemTotal:" << NUMmemTotal << endl;
+//        cout << "numMemSharedTotal:" << NUMmemSharedTotal << endl;
 
         fLoops[k].totalmemcycles = (NUMmemTotal / 32) * LatencyExposed + NUMmemTotal;
         fLoops[k].totalmemSharedcycles = (NUMmemSharedTotal / 32) * LatencyExposedShared + NUMmemSharedTotal;
@@ -562,10 +544,19 @@ ResultCycles getCycles(vector<Loop> fLoops, vector<CodeBlock> blocks, int *loopR
                         newTotalmemSharedcycles);
 }
 
-int main(void)
+
+
+int solve(long long numberOfthreads)
 {
-    cout << "wlp effect" << WLPeffect << endl;
+	
+	yyin= fopen("generatedptx.txt","r");
+	//yyin= fopen("test.txt","r");
+
+	bool debug=false;
+	if(debug){
+    		cout << "wlp effect" << WLPeffect << endl;
     printf("M=%d, S=%d, U=%d, C=%d, B=%d, D=%d E=%d CF=%d\n", M, S, U, C, B, D, E, CF);
+	}
     vector<CodeBlock> blocks;
     vector<Instruction> types;
 
@@ -683,6 +674,7 @@ int main(void)
             {
                 if (branches[i].lineNo > labels[j].lineNo)
                 {
+			if(debug)
                     cout << "backward call at " << branches[i].lineNo << " to " << labels[j].lineNo << endl;
                     Loop loop;
                     loop.startLine = labels[j].lineNo + 1;
@@ -747,6 +739,7 @@ int main(void)
     //cout << "debug start" << loops[0].startLine << endl;
     for (int k = 0; k < fLoops.size(); k++)
     {
+	int type=1;
         int l = 0;
         while (l < blocks.size() && blocks[l].startLine < fLoops[k].startLine)
         {
@@ -761,6 +754,13 @@ int main(void)
             blocks[l].inLoop = true;
         }
         fLoops[k].endBlock = l;
+	
+		
+	for(int i=fLoops[k].startBlock;i<=fLoops[k].endBlock;i++){
+		if(blocks[i].type == S)	type=2;
+	}
+	fLoops[k].type=type;
+	
     }
     //    cout << "debug" << endl;
     int t = 0;
@@ -785,6 +785,7 @@ int main(void)
         nonLoop.endBlock = t - 1;
         nonLoops.push_back(nonLoop);
     }
+if(debug){
     cout << "Loops\n";
     for (int i = 0; i < fLoops.size(); i++)
     {
@@ -795,7 +796,7 @@ int main(void)
     {
         cout << i + 1 << " start block=" << nonLoops[i].startBlock << "  end block=" << nonLoops[i].endBlock << endl;
     }
-
+}
     // cout << "debug1" << endl;
     long long int memnew = 0;
     long long compnew = 0;
@@ -813,11 +814,21 @@ int main(void)
     //int looptype[2] = {2, 1}; // 1 is unwrapped  2 is not
     //int loopRunning[2] = {32 * 2, 31};
 
-    int loopRunning[1] = {1024 / 2 * 1024 / 4};
-    int looptype[1] = {1};
+    vector<int> loopRunning;
+    vector<int> looptype;
+	int x;
+	cout<<"Note: If your kernal had nested loops and we have not shown here, then give the stat for outer loop only"<<endl;
+	for(int i=0;i<fLoops.size();i++){
+		cout<<"How many (expected)times does the loop 1 run"<<endl;
+		cin>>x;
+		loopRunning.push_back(x);	
+	}
+	
+		
+	
     //int loopRunning[1] = {1024 * 2};
 
-    long long numberOfthreads = 1024 * 1024 / 2;
+    //long long numberOfthreads = threads;
 
     long long newTotalmemcycles = 0;
     long long newTotalmemSharedcycles = 0;
@@ -826,36 +837,31 @@ int main(void)
     long long totalMemoryCycles = 0;
     long long totalOtherCycles = 0;
 
-    int temp[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    int temp2[] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
-    ResultCycles res = getCycles(fLoops, blocks, loopRunning, looptype, numberOfthreads);
+	vector<int> temp;
+	for(int i=0;i<nonLoops.size();i++){
+		temp.push_back(1);
+		nonLoops[i].type=2;
+	}
+    //int temp[] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    //int temp2[] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
+
+	
+	
+    ResultCycles res = getCycles(fLoops, blocks, loopRunning, numberOfthreads);
     newTotalCompcycles = res.totalCompcycles;
     newTotalmemcycles = res.totalmemcycles;
     newTotalmemSharedcycles = res.totalmemSharedcycles;
 
+if(debug){
     cout << "new total mem cycles" << newTotalmemcycles << endl;
     cout << "new total mem cycles shared" << newTotalmemSharedcycles << endl;
     cout << "new total comp  cycles" << newTotalCompcycles << endl;
-    res = getCycles(nonLoops, blocks, temp, temp2, numberOfthreads);
+}
+    res = getCycles(nonLoops, blocks, temp, numberOfthreads);
+
     newTotalCompcycles += res.totalCompcycles;
     newTotalmemcycles += res.totalmemcycles;
     newTotalmemSharedcycles += res.totalmemSharedcycles;
-
-    //totalMemoryCycles /= 224256; //ddr factor 2 or 4 if 4 then 22456 else divide by 2
-    // cout << "Memory Cycles" << totalMemoryCycles << endl;
-    // cout << "Other  cycles" << totalOtherCycles << endl;
-    // cout << " Mem Time " << (double)totalMemoryCycles / 1493000000 << endl;
-
-    //   cout << "Memory  Paper" << memnew << " time " << (double)memnew / 3504000000 << endl;
-    // cout << "comp new" << compnew << endl;
-    // cout << "total cycles new per wrap" << compnew + memnew << endl;
-    // cout << "time " << ((compnew + LatencyExposed * NUMmem) * (double)(1024 / 4) * ((1024 * 1024) / (20 * 32))) / 1493000000 << endl;
-    // long long hytotal = totalMemoryCycles + ((compnew) * (double)(1024 / 4) * ((1024 * 1024) / (20 * 32)));
-    // cout << "unsing mem old and comp new; time = " << (double)hytotal / 1493000000 << endl;
-
-    cout << "considering cache too" << endl;
-    //long long newTotalmemop = ((NUMmem) * (double)(1024 / 4) * ((1024 * 1024) / (20 * 32)));
-    //long long newTotalmemopShared = ((NUMmemShared) * (double)(1024 / 4) * ((1024 * 1024) / (20 * 32)));
 
     cout << "total cycles" << newTotalCompcycles + newTotalmemcycles + newTotalmemSharedcycles << endl;
     cout << "time:" << (double)(newTotalCompcycles + newTotalmemcycles + newTotalmemSharedcycles) / 1493000000 << endl;

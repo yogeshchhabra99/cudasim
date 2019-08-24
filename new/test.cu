@@ -23,4 +23,3 @@ void vecMulMatrixKernel(float* A, float* B, float* C, int n){
 
 }
 
-int main(){}

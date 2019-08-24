@@ -1,3 +1,5 @@
+#pragma once
+
 #define CURLYBEGIN 1
 #define CURLYEND 2
 #define BRACKETBEGIN 3

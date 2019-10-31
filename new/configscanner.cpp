@@ -1,7 +1,6 @@
 #include <bits/stdc++.h>
-#include "configscanner.h"
+#include "codescanner.h"
 #include "structs.h"
-#include "lex.yy.c"
 
 extern int yylex();
 extern int yylineno;
@@ -101,11 +100,11 @@ CudaConfig getConfig(){
     
 }
 
-int main(){
-	cout<<"debug1"<<endl;
-	printConfig(getConfig());
+//int main(){
+	//cout<<"debug1"<<endl;
+	//printConfig(getConfig());
 
-}
+//}
 
 
 

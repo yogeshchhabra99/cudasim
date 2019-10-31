@@ -13,7 +13,7 @@ int main ()
 	
     system("nvcc -c code.cu");
 	system("cuobjdump -ptx code.o >generatedptx.txt");
-    solve(); 
+    solve(config.numthreads,config.bytesPerCycle,config.loadLatency,config.sharedLoadLatency); 
   
     return 0; 
 } 

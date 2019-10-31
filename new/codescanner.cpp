@@ -546,7 +546,7 @@ ResultCycles getCycles(vector<Loop> fLoops, vector<CodeBlock> blocks, vector<int
 
 
 
-int solve(long long numberOfthreads)
+int solve(long long numberOfthreads,float bytesperCycle= 1.8775,int loadLatency = 300,int sharedLoadLatency = 50)
 {
 	
 	yyin= fopen("generatedptx.txt","r");
@@ -804,7 +804,7 @@ if(debug){
     int otherCycles = 0;
     int CYCcompute = 0;
     //for a wrap
-    long long loadLatency = 250;
+    //long long loadLatency = 250;
     int WLPeffect = 20;
     long long LatencyExposed;
     long long LatencyExposedShared;

@@ -3,6 +3,11 @@
 %}
 
 %%
+":" return COLON;
+"NUMTHREADS" return NUMTHREADS;
+"BYTESPERCYCLE" return BYTESPERCYCLE;
+"LOADLATENCY" return LOADLATENCY;
+"SHAREDLOADLATENCY" return SHAREDLOADLATENCY;
 "," return COMMA;
 ";" return SEMICOLON;
 "{" return CURLYBEGIN;
@@ -74,12 +79,13 @@
 "membar" return MEMBAR; //todo parrallel sync and communication instructions
 
 
-":" return COLON;
+
 "." return DOT;
 "@%"[a-zA-Z0-9] return CONTROLFLOW;
 
 [A-Z][_A-Z0-9]* return DIRECTIVE;
 [_a-z][_a-z0-9]* return VARNAME;
+[0-9][0-9]*"."[0-9][0-9]* return FLOAT;
 [1-9][0-9]* return INTEGER;
 [\t] ;
 [\n] return NEWLINE;

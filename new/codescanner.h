@@ -52,3 +52,14 @@
 #define GREATERTHAN 47
 #define THIRTYTWO 48
 #define SIXTYFOUR 49
+
+
+#define BYTESPERCYCLE 50
+#define LOADLATENCY 51
+#define SHAREDLOADLATENCY 52
+//#define INTEGER 4
+#define FLOAT 52
+//#define UNEXPECTED 6
+//#define COLON 7
+#define NUMTHREADS 54
+ 
